@@ -21,7 +21,7 @@ const Dashboard = () => {
       <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main className="flex-1 overflow-hidden">
-        <div className="h-full p-6">
+        <div className="h-full p-3 md:p-6 pt-16 md:pt-6">
           {activeTab === "chat" && (
             <div className="h-full">
               <ChatInterface />

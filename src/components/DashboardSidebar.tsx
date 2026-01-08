@@ -1,16 +1,19 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
   Sparkles, 
   MessageSquare, 
   User, 
   LogOut, 
-  LayoutDashboard,
   Target,
   Calendar,
-  Settings
+  Settings,
+  Menu,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -24,18 +27,34 @@ const navItems = [
   { id: "profile", label: "Founder Profile", icon: User },
 ];
 
-const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
+const SidebarContent = ({ 
+  activeTab, 
+  onTabChange, 
+  onClose 
+}: DashboardSidebarProps & { onClose?: () => void }) => {
   const { signOut } = useAuth();
 
+  const handleTabChange = (tab: string) => {
+    onTabChange(tab);
+    onClose?.();
+  };
+
   return (
-    <aside className="w-64 bg-card border-r border-border/50 flex flex-col h-full">
+    <>
       {/* Logo */}
       <div className="p-4 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <span className="font-semibold text-card-foreground">Co-Founder</span>
           </div>
-          <span className="font-semibold text-card-foreground">Co-Founder</span>
+          {onClose && (
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -44,7 +63,7 @@ const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => 
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => onTabChange(item.id)}
+            onClick={() => handleTabChange(item.id)}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
               activeTab === item.id
@@ -61,7 +80,7 @@ const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => 
       {/* Bottom */}
       <div className="p-3 border-t border-border/50 space-y-1">
         <button
-          onClick={() => onTabChange("settings")}
+          onClick={() => handleTabChange("settings")}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
             activeTab === "settings"
@@ -81,7 +100,40 @@ const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => 
           Sign Out
         </Button>
       </div>
-    </aside>
+    </>
+  );
+};
+
+const DashboardSidebar = ({ activeTab, onTabChange }: DashboardSidebarProps) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* Mobile Hamburger Menu */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden fixed top-4 left-4 z-50 bg-card shadow-lg border border-border/50"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0 flex flex-col">
+          <SidebarContent 
+            activeTab={activeTab} 
+            onTabChange={onTabChange} 
+            onClose={() => setOpen(false)} 
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 bg-card border-r border-border/50 flex-col h-full">
+        <SidebarContent activeTab={activeTab} onTabChange={onTabChange} />
+      </aside>
+    </>
   );
 };
 

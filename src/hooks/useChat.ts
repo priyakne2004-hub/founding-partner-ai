@@ -7,6 +7,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  images?: string[];
   created_at?: string;
 }
 
@@ -24,6 +25,7 @@ export const useChat = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   // Load conversations
@@ -73,6 +75,46 @@ export const useChat = () => {
     loadMessages();
   }, [currentConversationId, user]);
 
+  const uploadFiles = useCallback(async (files: File[]): Promise<string[]> => {
+    if (!user) return [];
+    
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("chat-uploads")
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          toast({
+            title: "Upload failed",
+            description: `Failed to upload ${file.name}`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("chat-uploads")
+          .getPublicUrl(fileName);
+
+        if (urlData?.publicUrl) {
+          uploadedUrls.push(urlData.publicUrl);
+        }
+      }
+    } finally {
+      setIsUploading(false);
+    }
+
+    return uploadedUrls;
+  }, [user, toast]);
+
   const createConversation = useCallback(async (title: string = "New Conversation") => {
     if (!user) return null;
 
@@ -115,8 +157,8 @@ export const useChat = () => {
     }
   }, [user, currentConversationId]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading || !user) return;
+  const sendMessage = useCallback(async (content: string, imageUrls?: string[]) => {
+    if ((!content.trim() && (!imageUrls || imageUrls.length === 0)) || isLoading || !user) return;
 
     let convId = currentConversationId;
     
@@ -137,7 +179,8 @@ export const useChat = () => {
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: content.trim(),
+      content: content.trim() || "Analyze this image",
+      images: imageUrls,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -164,6 +207,7 @@ export const useChat = () => {
           messages: [...messages, userMessage].map((m) => ({
             role: m.role,
             content: m.content,
+            images: m.images,
           })),
           conversationId: convId,
         },
@@ -236,7 +280,9 @@ export const useChat = () => {
     currentConversationId,
     isLoading,
     isLoadingConversations,
+    isUploading,
     sendMessage,
+    uploadFiles,
     clearChat,
     newChat,
     createConversation,

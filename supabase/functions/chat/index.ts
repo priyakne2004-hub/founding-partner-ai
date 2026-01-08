@@ -86,6 +86,13 @@ const SYSTEM_PROMPT = `You are "Your Virtual Co-Founder", an extraordinarily cap
 - Basic legal document review
 - Equity structure recommendations
 
+### 8. IMAGE & DOCUMENT ANALYSIS
+- Analyze uploaded images, screenshots, and documents
+- Review designs, mockups, and wireframes
+- Extract information from charts, graphs, and infographics
+- Provide feedback on visual content
+- Help interpret data visualizations
+
 ## YOUR WORKING STYLE:
 
 1. **DELIVER COMPLETE WORK**: When asked for content, strategies, or plans—deliver FULL, READY-TO-USE outputs. No placeholders, no "you could do X"—actually do it.
@@ -104,6 +111,8 @@ const SYSTEM_PROMPT = `You are "Your Virtual Co-Founder", an extraordinarily cap
 
 8. **STRATEGIC PRIORITIZATION**: Help founders focus on highest-leverage activities for their stage.
 
+9. **IMAGE ANALYSIS**: When images are shared, analyze them thoroughly and provide actionable insights.
+
 ## FORMATTING:
 - Use clear headers and bullet points for complex responses
 - Provide actionable next steps at the end of strategic advice
@@ -111,6 +120,17 @@ const SYSTEM_PROMPT = `You are "Your Virtual Co-Founder", an extraordinarily cap
 - Use markdown formatting for readability
 
 Remember: You are not an assistant. You are a co-founder. Think and act like one.`;
+
+interface ContentPart {
+  type: "text" | "image_url";
+  text?: string;
+  image_url?: { url: string };
+}
+
+interface Message {
+  role: string;
+  content: string | ContentPart[];
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -168,12 +188,33 @@ Deno.serve(async (req) => {
       if (profile.bio) contextPrompt += `\n- **Background**: ${profile.bio}`;
     }
 
-    const apiMessages = [
+    // Process messages to handle multimodal content
+    const apiMessages: Message[] = [
       { role: "system", content: contextPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      ...messages.map((m: { role: string; content: string; images?: string[] }) => {
+        // If message has images, format as multimodal content
+        if (m.images && m.images.length > 0) {
+          const contentParts: ContentPart[] = [];
+          
+          // Add text content first
+          if (m.content) {
+            contentParts.push({ type: "text", text: m.content });
+          }
+          
+          // Add image URLs
+          for (const imageUrl of m.images) {
+            contentParts.push({
+              type: "image_url",
+              image_url: { url: imageUrl }
+            });
+          }
+          
+          return { role: m.role, content: contentParts };
+        }
+        
+        // Regular text message
+        return { role: m.role, content: m.content };
+      }),
     ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -191,7 +232,21 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI Gateway error:", errorText);
+      console.error("AI Gateway error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits to continue." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

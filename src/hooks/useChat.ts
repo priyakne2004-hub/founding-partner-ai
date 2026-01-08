@@ -1,20 +1,138 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  created_at?: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export const useChat = () => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const { toast } = useToast();
 
+  // Load conversations
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+
+      if (!error && data) {
+        setConversations(data);
+      }
+      setIsLoadingConversations(false);
+    };
+
+    loadConversations();
+  }, [user]);
+
+  // Load messages for current conversation
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!currentConversationId || !user) {
+        setMessages([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", currentConversationId)
+        .order("created_at", { ascending: true });
+
+      if (!error && data) {
+        setMessages(data.map(m => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          created_at: m.created_at,
+        })));
+      }
+    };
+
+    loadMessages();
+  }, [currentConversationId, user]);
+
+  const createConversation = useCallback(async (title: string = "New Conversation") => {
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, title })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating conversation:", error);
+      return null;
+    }
+
+    setConversations(prev => [data, ...prev]);
+    setCurrentConversationId(data.id);
+    setMessages([]);
+    return data.id;
+  }, [user]);
+
+  const selectConversation = useCallback((conversationId: string) => {
+    setCurrentConversationId(conversationId);
+  }, []);
+
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("conversations")
+      .delete()
+      .eq("id", conversationId)
+      .eq("user_id", user.id);
+
+    if (!error) {
+      setConversations(prev => prev.filter(c => c.id !== conversationId));
+      if (currentConversationId === conversationId) {
+        setCurrentConversationId(null);
+        setMessages([]);
+      }
+    }
+  }, [user, currentConversationId]);
+
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading) return;
+    if (!content.trim() || isLoading || !user) return;
+
+    let convId = currentConversationId;
+    
+    // Create conversation if none exists
+    if (!convId) {
+      const firstWords = content.split(" ").slice(0, 5).join(" ");
+      convId = await createConversation(firstWords + "...");
+      if (!convId) {
+        toast({
+          title: "Error",
+          description: "Failed to create conversation",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -26,6 +144,15 @@ export const useChat = () => {
     setIsLoading(true);
 
     try {
+      // Save user message to database
+      await supabase.from("messages").insert({
+        id: userMessage.id,
+        conversation_id: convId,
+        user_id: user.id,
+        role: "user",
+        content: userMessage.content,
+      });
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -38,6 +165,7 @@ export const useChat = () => {
             role: m.role,
             content: m.content,
           })),
+          conversationId: convId,
         },
       });
 
@@ -51,6 +179,34 @@ export const useChat = () => {
         content: response.data.message,
       };
 
+      // Save assistant message to database
+      await supabase.from("messages").insert({
+        id: assistantMessage.id,
+        conversation_id: convId,
+        user_id: user.id,
+        role: "assistant",
+        content: assistantMessage.content,
+      });
+
+      // Update conversation title if it's the first message
+      if (messages.length === 0) {
+        const title = content.split(" ").slice(0, 5).join(" ") + "...";
+        await supabase
+          .from("conversations")
+          .update({ title, updated_at: new Date().toISOString() })
+          .eq("id", convId);
+        
+        setConversations(prev => 
+          prev.map(c => c.id === convId ? { ...c, title, updated_at: new Date().toISOString() } : c)
+        );
+      } else {
+        // Just update the timestamp
+        await supabase
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", convId);
+      }
+
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Chat error:", error);
@@ -62,16 +218,29 @@ export const useChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, toast]);
+  }, [messages, isLoading, user, currentConversationId, createConversation, toast]);
 
   const clearChat = useCallback(() => {
+    setCurrentConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const newChat = useCallback(() => {
+    setCurrentConversationId(null);
     setMessages([]);
   }, []);
 
   return {
     messages,
+    conversations,
+    currentConversationId,
     isLoading,
+    isLoadingConversations,
     sendMessage,
     clearChat,
+    newChat,
+    createConversation,
+    selectConversation,
+    deleteConversation,
   };
 };

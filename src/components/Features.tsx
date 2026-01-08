@@ -1,69 +1,120 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, BarChart3, MessageSquare, Target, Users, Zap } from "lucide-react";
+import { 
+  Brain, 
+  BarChart3, 
+  MessageSquare, 
+  Target, 
+  Users, 
+  Zap,
+  PenTool,
+  Rocket,
+  TrendingUp,
+  FileText,
+  DollarSign,
+  Lightbulb
+} from "lucide-react";
 
 const features = [
   {
     icon: Brain,
-    title: "Strategic Thinking Partner",
-    description: "Get clarity on business models, pricing strategies, and growth roadmaps with an AI that challenges weak ideas and suggests better alternatives."
+    title: "Strategic Thinking",
+    description: "Business model validation, competitive analysis, SWOT, and strategic positioning. Get clarity on your path forward."
   },
   {
     icon: MessageSquare,
-    title: "Content & Brand Strategy",
-    description: "Build your founder personal brand with content calendars, viral hooks, and authentic storytelling that positions you as a thought leader."
+    title: "Content Creation",
+    description: "Full-draft LinkedIn posts, Twitter threads, blog articles, and video scripts. Ready to publish, not placeholders."
   },
   {
     icon: Target,
     title: "Execution Planning",
-    description: "Break complex problems into actionable steps. From MVP clarity to scaling from 0→1→10→100, get structured execution support."
+    description: "MVP definition, product roadmaps, sprint planning, and launch strategies. Actionable steps, not vague advice."
   },
   {
-    icon: BarChart3,
-    title: "Growth & Monetization",
-    description: "User acquisition ideas, retention strategies, and monetization improvements — all backed by logic and startup best practices."
+    icon: TrendingUp,
+    title: "Growth Strategy",
+    description: "User acquisition, retention strategies, viral loops, and referral programs. Scale from 0 to 100."
+  },
+  {
+    icon: DollarSign,
+    title: "Revenue & Pricing",
+    description: "Pricing strategy, monetization models, unit economics, and financial projections. Maximize your value capture."
   },
   {
     icon: Users,
-    title: "Social Media Management",
-    description: "Manage Instagram, LinkedIn, and Facebook with permission-based content execution. Drafts first, action only after your approval."
+    title: "Sales & Outreach",
+    description: "Cold email templates, sales scripts, objection handling, and CRM strategy. Close more deals."
+  },
+  {
+    icon: PenTool,
+    title: "Brand Building",
+    description: "Brand strategy, positioning, founder personal brand, and content calendars. Build authority in your space."
+  },
+  {
+    icon: Lightbulb,
+    title: "Decision Partner",
+    description: "High-leverage questions, prioritization frameworks, and focus optimization. Prevent burnout, move faster."
+  },
+  {
+    icon: Rocket,
+    title: "Fundraising Prep",
+    description: "Pitch deck creation, term sheet review, cap table basics, and investor targeting. Get funding-ready."
+  },
+  {
+    icon: FileText,
+    title: "Documentation",
+    description: "PRDs, user stories, process documentation, and team playbooks. Build systems that scale."
+  },
+  {
+    icon: BarChart3,
+    title: "Analytics & KPIs",
+    description: "KPI definition, OKR frameworks, and tracking systems. Measure what matters."
   },
   {
     icon: Zap,
-    title: "Decision Partner",
-    description: "Your thinking multiplier for high-leverage decisions. Prevent burnout with smart prioritization and focus optimization."
+    title: "Instant Execution",
+    description: "No waiting, no scheduling. Get strategic support 24/7 whenever you need it."
   }
 ];
 
 const Features = () => {
   return (
-    <section className="py-24 bg-background">
-      <div className="container mx-auto px-6">
+    <section className="py-24 bg-background relative overflow-hidden">
+      {/* Background Decoration */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-chart-2/5 rounded-full blur-3xl" />
+      
+      <div className="container mx-auto px-6 relative z-10">
         {/* Section Header */}
         <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
+            <Zap className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Full Co-Founder Capabilities</span>
+          </div>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Everything a Real Co-Founder Does
+            Everything a Human Co-Founder Does
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Strategic support across every dimension of building a startup — 
-            from ideation to execution, branding to growth.
+            Not just advice — real deliverables. Complete drafts, actionable strategies, 
+            and executable plans ready for you to use.
           </p>
         </div>
         
         {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {features.map((feature, index) => (
             <Card 
               key={index} 
-              className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50 bg-card"
+              className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50 bg-card/50 backdrop-blur-sm"
             >
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="w-6 h-6 text-primary" />
+              <CardHeader className="pb-2">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 group-hover:scale-110 transition-all">
+                  <feature.icon className="w-5 h-5 text-primary" />
                 </div>
-                <CardTitle className="text-xl text-card-foreground">{feature.title}</CardTitle>
+                <CardTitle className="text-base text-card-foreground">{feature.title}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <CardDescription className="text-muted-foreground leading-relaxed">
+              <CardContent className="pt-0">
+                <CardDescription className="text-muted-foreground text-sm leading-relaxed">
                   {feature.description}
                 </CardDescription>
               </CardContent>
